@@ -5,8 +5,7 @@
   "main": "./src/http/server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "wconnect": "node --env-file=.env --watch ./src/utils/waweb.js",
-    "server": "node --env-file=.env --watch ./src/http/server.js"
+    "app": "node --env-file=.env --watch ./src/app.js"
   },
   "keywords": [],
   "author": "",
@@ -14,7 +13,7 @@
   "dependencies": {
     "@google/generative-ai": "^0.11.4",
     "basho-riak-client": "^2.4.0",
-    "fastify": "^4.27.0",
+    "crypto-js": "^4.2.0",
     "qrcode-terminal": "^0.12.0",
     "whatsapp-web.js": "^1.23.0"
   }
