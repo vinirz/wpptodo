@@ -1,89 +1,116 @@
-const Riak = require('basho-riak-client');
+const { default: axios, all } = require('axios');
 const { MD5 } = require('crypto-js');
 
-const nodes = ['127.0.0.1:8087']
-
-var client = new Riak.Client(nodes, (err, c) => {err ? err : c});
+const riak = axios.create({
+    baseURL: process.env.DB_URL,
+    timeout: 15000,
+});
 
 module.exports = {
-    addOne({userPhone, userName, label, reminderDate, task}){
-        return new Promise((resolve, reject) => {
-            client.storeValue({
-                bucket: 'default',
-                key: MD5(reminderDate).toString(),
-                value: {
-                    "userPhone": userPhone,
-                    "userName": userName,
-                    "label": label,
-                    "reminderDate": reminderDate,
-                    "task": task
-                }
-            }, (err) => {
-                if(err){
-                    console.log(err)
-                    reject(false)
-                }else{
-                    console.log(`saved! -> ${reminderDate} -> ${MD5(reminderDate).toString()}`)
-                    resolve(true)
-                }
-            })
-        })
-    },
+    async addOne({userPhone, userName, label, reminderDate, task}){
+        const key = MD5(reminderDate).toString()
 
-    getOne(key){
-        return new Promise((resolve, reject) => {
-            client.fetchValue({ 
-                bucket: 'default', 
-                key: MD5(key).toString(),
-                convertToJs: true 
-            }, (err, rslt) => {
-                if (err) {
-                    reject(err); 
-                } else if (rslt.values.length > 0) {
-                    const riakObj = rslt.values.shift();
-                    const data = riakObj.value;
-                    resolve(data); 
-                } else {
-                    resolve(null); 
+        try {
+            const keyExists = await riak.get(`/riak/default/${key}`)
+
+            if(keyExists.status === 200){
+                const response = await riak.post(`/riak/default/${key}`, [
+                    ...keyExists.data,
+                    {
+                        "userPhone": userPhone,
+                        "userName": userName,
+                        "label": label,
+                        "reminderDate": reminderDate,
+                        "task": task
+                    }
+                ])
+        
+                if(response.status != 204){
+                    return new Error(response.statusText)
                 }
-            });
-        });
-    },
-
-    deleteOne(key){
-        client.deleteValue({ 
-            bucket: 'default', 
-            key:  MD5(key).toString()
-        }, (err) => {err ? err : console.log('deleted!')});
-    },
-
-    getAll(){
-        client.listKeys({bucket: 'default'}, (err, data) => {
-            if(err){
-                return err
+        
+                return true
             }
+        } catch (error) {
+            if (error.response && error.response.status === 404) {
 
-            [data].forEach(e => {
-                console.log(e.keys[0])
-            })
-        })
+                const response = await riak.post(`/riak/default/${key}`, [
+                    {
+                        "userPhone": userPhone,
+                        "userName": userName,
+                        "label": label,
+                        "reminderDate": reminderDate,
+                        "task": task
+                    }
+                ])
+        
+                if(response.status != 204){
+                    return new Error(response.statusText)
+                }
+        
+                return true
+
+            } else {
+                throw error; 
+            }
+        }
     },
 
-    deleteAll(){
-        client.listKeys({bucket: 'default'}, (err, data) => {
-            if(err){
-                return err
+    async getOne(key){
+        try {
+            const response = await riak.get(`/riak/default/${MD5(key).toString()}`)
+            return response.data
+        } catch (error) {
+            if (error.response && error.response.status === 404) {
+                return false;
+            } else {
+                throw error; 
             }
+        }
+    },
 
-            [data].forEach(e => {
-                if(e.keys[0]){
-                    client.deleteValue({ bucket: 'default', key: e.keys[0] }, () => {});
-                }
-            })
+    async deleteOne(key){
+        const response = await riak.delete(`/riak/default/${MD5(key).toString()}`)
 
-            console.log('deleted')
-        })
+        if(response.status != 204){
+            return new Error(response.statusText)
+        }
+
+        return true
+    },
+
+    async getAll(){
+        const response = await riak.get(`/buckets/default/keys?keys=true`)
+
+        if(response.status != 200){
+            return new Error(response.statusText)
+        }
+
+        const allData = []
+
+        for (const key of response.data.keys) {
+            let value = await riak.get(`/riak/default/${key}`);
+            allData.push({ [key]: value.data });
+        }
+
+        return allData
+    },
+
+    async deleteAll(){
+        const response = await riak.get(`/buckets/default/keys?keys=true`)
+
+        if(response.status != 200){
+            return new Error(response.statusText)
+        }
+
+        for (const key of response.data.keys) {
+            try {                
+                await riak.delete(`/riak/default/${key}`)
+            } catch (error) {
+                return new Error(error)
+            }
+        }
+
+        return true
     }
 }
-
-// '553291436256@c.us', 'Vinicius Reis', 'comprar maçã amnhã às 8:00', '31/05/2024, 12:00:00', 'Comprar presente para josicleiton'

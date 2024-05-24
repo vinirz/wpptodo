@@ -4,22 +4,22 @@ const { getOne, deleteOne } = require("../database/database");
 
 module.exports = {
     startClock(client){
-        setInterval(() => {
+        setInterval(async () => {
             const seconds = new Date().getSeconds()
         
             if(seconds == 0){
                 const currentDate = removeSeconds(new Date().toLocaleString())
         
                 console.log(`${currentDate} -> ${MD5(currentDate).toString()}`)
-            
-                getOne(currentDate)
-                    .then(data => {
-                        if(data){
-                            console.log(`lembrete:\n${data.task}`)
-                            client.sendMessage(data.userPhone, `${data.task}\n\nOlá *${data.userName}*\nPassando para te lembrar da sua task:\n\n_"${data.label}"_`)
-                            deleteOne(currentDate)
-                        }
-                    })
+                
+                const reminder = await getOne(currentDate)
+
+                if(reminder){
+                    for (const task of reminder) {
+                        client.sendMessage(task.userPhone, `${task.task}\n\nOlá *${task.userName}*\nPassando para te lembrar da sua task:\n\n_"${task.label}"_`)
+                    }
+                    deleteOne(currentDate)
+                }
             }
         }, 1000)
     }
