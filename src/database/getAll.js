@@ -1,3 +1,8 @@
-const { getAll } = require("./database");
+const { getAll, getOne } = require("./database");
 
-getAll()
+async function main(){
+    const data = await getAll()
+    console.log(JSON.stringify(data, null, 2))
+}
+
+main()

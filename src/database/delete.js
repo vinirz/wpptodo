@@ -1,3 +1,8 @@
-const { deleteAll } = require("./database");
+const { deleteAll, deleteOne } = require("./database");
 
-deleteAll()
+async function main(){
+    const data = await deleteAll()
+    console.log(data)
+}
+
+main()
