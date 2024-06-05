@@ -8,18 +8,20 @@ services:
     environment:
       - CLUSTER_NAME=riakkv
     labels:
-      - "com.basho.riak.cluster.name=riakkv"
+      - "com.basho.riak.cluster.name=riak-kv"
     volumes:
       - schemas:/etc/riak/schemas
+    network_mode: bridge
   member:
     image: basho/riak-kv
     ports:
       - "8087"
       - "8098"
     labels:
-      - "com.basho.riak.cluster.name=riakkv"
+      - "com.basho.riak.cluster.name=riak-kv"
     links:
       - coordinator
+    network_mode: bridge
     depends_on:
       - coordinator
     environment:
@@ -27,5 +29,4 @@ services:
       - COORDINATOR_NODE=coordinator
 
 volumes:
-  schemas:
-    external: false
+  schemas: {}

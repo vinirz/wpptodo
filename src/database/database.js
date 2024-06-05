@@ -2,27 +2,21 @@ const { default: axios, all } = require('axios');
 const { MD5 } = require('crypto-js');
 
 const riak = axios.create({
-    baseURL: process.env.DB_URL,
+    baseURL: "http://localhost:8098/",
     timeout: 15000,
 });
 
 module.exports = {
-    async addOne({userPhone, userName, label, reminderDate, task}){
-        const key = MD5(reminderDate).toString()
+    async addOne(data){
+        const key = MD5(data.reminderDate).toString()
 
         try {
-            const keyExists = await riak.get(`/riak/default/${key}`)
+            const keyExists = await riak.get(`/riak/cluster/${key}`)
 
             if(keyExists.status === 200){
-                const response = await riak.post(`/riak/default/${key}`, [
+                const response = await riak.post(`/riak/cluster/${key}`, [
                     ...keyExists.data,
-                    {
-                        "userPhone": userPhone,
-                        "userName": userName,
-                        "label": label,
-                        "reminderDate": reminderDate,
-                        "task": task
-                    }
+                    data
                 ])
         
                 if(response.status != 204){
@@ -34,15 +28,7 @@ module.exports = {
         } catch (error) {
             if (error.response && error.response.status === 404) {
 
-                const response = await riak.post(`/riak/default/${key}`, [
-                    {
-                        "userPhone": userPhone,
-                        "userName": userName,
-                        "label": label,
-                        "reminderDate": reminderDate,
-                        "task": task
-                    }
-                ])
+                const response = await riak.post(`/riak/cluster/${key}`, [data])
         
                 if(response.status != 204){
                     return new Error(response.statusText)
@@ -58,7 +44,7 @@ module.exports = {
 
     async getOne(key){
         try {
-            const response = await riak.get(`/riak/default/${MD5(key).toString()}`)
+            const response = await riak.get(`/riak/cluster/${MD5(key).toString()}`)
             return response.data
         } catch (error) {
             if (error.response && error.response.status === 404) {
@@ -69,18 +55,8 @@ module.exports = {
         }
     },
 
-    async deleteOne(key){
-        const response = await riak.delete(`/riak/default/${MD5(key).toString()}`)
-
-        if(response.status != 204){
-            return new Error(response.statusText)
-        }
-
-        return true
-    },
-
     async getAll(){
-        const response = await riak.get(`/buckets/default/keys?keys=true`)
+        const response = await riak.get(`/buckets/cluster/keys?keys=true`)
 
         if(response.status != 200){
             return new Error(response.statusText)
@@ -89,15 +65,25 @@ module.exports = {
         const allData = []
 
         for (const key of response.data.keys) {
-            let value = await riak.get(`/riak/default/${key}`);
+            let value = await riak.get(`/riak/cluster/${key}`);
             allData.push({ [key]: value.data });
         }
 
         return allData
     },
 
+    async deleteOne(key){
+        const response = await riak.delete(`/riak/cluster/${MD5(key).toString()}`)
+
+        if(response.status != 204){
+            return new Error(response.statusText)
+        }
+
+        return true
+    },
+
     async deleteAll(){
-        const response = await riak.get(`/buckets/default/keys?keys=true`)
+        const response = await riak.get(`/buckets/cluster/keys?keys=true`)
 
         if(response.status != 200){
             return new Error(response.statusText)
@@ -105,7 +91,7 @@ module.exports = {
 
         for (const key of response.data.keys) {
             try {                
-                await riak.delete(`/riak/default/${key}`)
+                await riak.delete(`/riak/cluster/${key}`)
             } catch (error) {
                 return new Error(error)
             }
