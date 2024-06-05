@@ -1,4 +1,4 @@
-const { getAll, getOne } = require("./database");
+const { getAll } = require("../database");
 
 async function main(){
     const data = await getAll()

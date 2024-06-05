@@ -36,7 +36,7 @@ client.on('message_create', async message => {
             "currentDate": currentDateFormated
         })
 
-        if(reminder){
+        if(reminder?.reminderDate){
             const newTask = {
                 userPhone: message.from,
                 userName: message._data.notifyName,
@@ -56,6 +56,8 @@ client.on('message_create', async message => {
                 .catch(() => {
                     message.reply(`Não foi possível salvar a tarefa`)
                 })
+        }else{
+            client.sendMessage(message.from, reminder.task ? reminder.task : `Não foi possível salvar a tarefa`)
         }
     }
 });
